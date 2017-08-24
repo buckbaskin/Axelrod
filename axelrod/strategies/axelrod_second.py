@@ -237,22 +237,50 @@ class MoreGrofman(Player):
         super().__init__()
 
     def strategy(self, opponent: Player) -> Action:
-        # Cooperate on the first two moves
-        if not self.history or len(self.history) in [1]:
-            return C
-        # For rounds 3-7, play the opponent's last move
-        elif 2 <= len(self.history) <= 6:
-            return opponent.history[-1]
-        # Logic for the rest of the game
+        if len(opponent.history) >= 1:
+            jpick = opponent.history[-1]
         else:
-            opponent_defections_last_7_rounds = opponent.history[-7:].count(D)
-            if self.history[-1] == C:
-                if opponent_defections_last_7_rounds < 2:
-                    return C
-                else:
-                    return D
-            else:
-                if opponent_defections_last_7_rounds in [0, 1]:
-                    return C
-                else:
-                    return D
+            jpick = C
+        moven = len(self.history) + 1 # index from 1 for fortran logic
+        ioppnt = opponent.history
+        return self.k86r(jpick, moven, ioppnt)
+
+    def k86r(self, jpick, moven, ioppnt):
+        """
+        Originally by Bernard Grofman
+        From cards by "JM" 3/27/79
+
+        jpick = what the opponent picked last turn
+        moven = move number (+1 because fortran was indexed from 1)
+        iscore, jscore, random are not referenced in the Fortran function
+        ja appears to be the last value picked?
+        """
+        # DIMENSION IOPPNT(999) # declare an array of size 999
+        # k86r = ja # choosing to skip this line
+        if not moven > 2:
+            return C
+        elif not moven > 7:
+            return jpick
+        else:
+            myold = self.history[-1] # originally MYOLD = K86R
+            iprev7 = 0
+            j = moven - 7
+            k = moven - 1
+            #       DO 25 I = J,K
+            # 25        IPREV7 = IPREV7 + IOPPNT(I)
+            # Do loop where I iterates from J to K with the default step of 1
+            # The 25 specifies label (25) that ends the loop
+            # IOPPNT includes the opponent's last moves (0 = C, 1 = D)
+            for i in range(j-1, k+1): # index range j to k inclusive
+                python_index = i - 1
+                iprev7 = iprev7 + int(ioppnt[python_index] == D)
+
+            if myold == C and iprev7 <= 2:
+                return C
+            if myold == C and iprev7 > 2:
+                return D
+            if myold == D and iprev7 <= 1:
+                return C
+            if myold == D and iprev7 > 1:
+                return D
+
